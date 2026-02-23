@@ -1,0 +1,236 @@
+"use client";
+
+import { useEffect, useState, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PostEditorDrawer } from "@/components/post-editor-drawer";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  format,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  parseISO,
+} from "date-fns";
+import { cn } from "@/lib/utils";
+
+type Post = {
+  id: string;
+  postDate: string;
+  assetId: string | null;
+  caption: string | null;
+  approvalSendAt: string | null;
+  offsetDays: number;
+  status: string;
+  asset?: { id: string; url: string } | null;
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-muted text-muted-foreground",
+  SCHEDULED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  PENDING_APPROVAL: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  CONFIRMED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  CHANGES_REQUESTED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  SKIPPED: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+};
+
+function PlannerContent() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const clientId = params.id as string;
+
+  const monthParam = searchParams.get("month");
+  const [viewDate, setViewDate] = useState(() => {
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const [y, m] = monthParam.split("-").map(Number);
+      return new Date(y, m - 1);
+    }
+    return new Date();
+  });
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [clientName, setClientName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const monthStr = format(viewDate, "yyyy-MM");
+
+  useEffect(() => {
+    fetch(`/api/clients/${clientId}`)
+      .then((r) => r.json())
+      .then((c) => setClientName(c.name ?? "Client"));
+  }, [clientId]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/clients/${clientId}/posts?month=${monthStr}`)
+      .then((r) => r.json())
+      .then(setPosts)
+      .finally(() => setLoading(false));
+  }, [clientId, monthStr]);
+
+  const prevMonth = () => setViewDate((d) => subMonths(d, 1));
+  const nextMonth = () => setViewDate((d) => addMonths(d, 1));
+
+  const start = startOfMonth(viewDate);
+  const end = endOfMonth(viewDate);
+  const days = eachDayOfInterval({ start, end });
+
+  // Pad start so first day aligns to correct weekday
+  const startPad = start.getDay();
+  const paddedDays = [...Array(startPad).fill(null), ...days];
+
+  const getPostForDay = (day: Date) =>
+    posts.find((p) => isSameDay(parseISO(p.postDate), day));
+
+  const openEditor = (post: Post) => {
+    setSelectedPost(post);
+    setDrawerOpen(true);
+  };
+
+  const createOrEditDay = (day: Date) => {
+    const existing = getPostForDay(day);
+    if (existing) {
+      openEditor(existing);
+    } else {
+      // Create new post and open editor
+      fetch(`/api/clients/${clientId}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postDate: format(day, "yyyy-MM-dd"),
+          status: "DRAFT",
+          offsetDays: 0,
+        }),
+      })
+        .then((r) => r.json())
+        .then((post) => {
+          setPosts((prev) => [...prev, post].sort((a, b) => a.postDate.localeCompare(b.postDate)));
+          setSelectedPost(post);
+          setDrawerOpen(true);
+        });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{clientName}</h1>
+            <p className="text-sm text-muted-foreground">
+              Click a day to schedule or edit a post
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={prevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-[140px] text-center font-medium">
+            {format(viewDate, "MMMM yyyy")}
+          </span>
+          <Button variant="outline" size="icon" onClick={nextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-muted-foreground">Loading...</p>
+      ) : (
+        <div className="rounded-lg border">
+          <div className="grid grid-cols-7 border-b bg-muted/50">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+              <div
+                key={d}
+                className="p-2 text-center text-sm font-medium text-muted-foreground"
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {paddedDays.map((day, i) => {
+              if (!day) {
+                return <div key={`pad-${i}`} className="min-h-[100px] border p-2" />;
+              }
+              const post = getPostForDay(day);
+              const isCurrentMonth = isSameMonth(day, viewDate);
+
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={cn(
+                    "min-h-[100px] cursor-pointer border p-2 transition-colors hover:bg-muted/50",
+                    !isCurrentMonth && "bg-muted/30"
+                  )}
+                  onClick={() => createOrEditDay(day)}
+                >
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      !isCurrentMonth && "text-muted-foreground"
+                    )}
+                  >
+                    {format(day, "d")}
+                  </span>
+                  {post && (
+                    <div className="mt-2 space-y-1">
+                      {post.asset?.url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={post.asset.url}
+                          alt="Post thumbnail"
+                          className="h-12 w-full rounded object-cover"
+                        />
+                      )}
+                      <Badge
+                        variant="secondary"
+                        className={cn("text-xs", STATUS_COLORS[post.status] ?? "")}
+                      >
+                        {post.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <PostEditorDrawer
+        post={selectedPost}
+        clientId={clientId}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onSaved={() => {
+          fetch(`/api/clients/${clientId}/posts?month=${monthStr}`)
+            .then((r) => r.json())
+            .then(setPosts);
+        }}
+      />
+    </div>
+  );
+}
+
+export default function PlannerPage() {
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <PlannerContent />
+    </Suspense>
+  );
+}

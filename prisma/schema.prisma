@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PENDING_APPROVAL
+  CONFIRMED
+  CHANGES_REQUESTED
+  SKIPPED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts       Contact[]
+  scheduledPosts ScheduledPost[]
+}
+
+model Contact {
+  id              String   @id @default(cuid())
+  clientId        String
+  name            String
+  phone           String   // E.164 format
+  isPrimaryApproval Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  key       String   @unique // S3/R2 key or local path
+  url       String   // Public or signed URL
+  mimeType  String?
+  sizeBytes Int?
+  createdAt DateTime @default(now())
+
+  scheduledPosts ScheduledPost[]
+}
+
+model ScheduledPost {
+  id              String     @id @default(cuid())
+  clientId        String
+  postDate        DateTime   @db.Date
+  assetId         String?
+  caption         String?
+  approvalSendAt  DateTime?
+  offsetDays      Int        @default(0) // days before postDate to send approval
+  status          PostStatus @default(DRAFT)
+  sentAt          DateTime?
+  confirmedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  asset  Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  messageLogs MessageLog[]
+}
+
+model MessageLog {
+  id              String         @id @default(cuid())
+  scheduledPostId String
+  twilioSid      String?
+  deliveryStatus DeliveryStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  scheduledPost ScheduledPost @relation(fields: [scheduledPostId], references: [id], onDelete: Cascade)
+}
+
+model ReplyLog {
+  id        String   @id @default(cuid())
+  twilioSid String?
+  fromPhone String
+  body      String
+  createdAt DateTime @default(now())
+}
