@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Monthly WhatsApp Post Planner
 
-## Getting Started
+A Next.js 14 (App Router) TypeScript app for planning and scheduling WhatsApp posts per client on a monthly basis.
 
-First, run the development server:
+## Features
+
+- **Clients CRUD** — Manage clients with primary approval contacts
+- **Monthly Planner** — Calendar grid at `/clients/[id]/planner?month=YYYY-MM`
+- **Post Editor** — Right drawer: upload poster, caption, approval time, offset days, save Draft/Schedule
+- **Scheduler** — Cron every 15 min sends approval messages via Twilio WhatsApp
+- **Webhooks** — Status updates and inbound button handling (Confirm / Need changes / Skip)
+- **Dashboard** — Filter by status, quick actions (resend, edit, change asset)
+- **Storage** — Local uploads (dev), S3/R2 (prod)
+
+## Stack
+
+- Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- Prisma + PostgreSQL
+- Twilio WhatsApp API
+- Zod validation
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Set up NeonDB (free tier):**
+1. Go to [console.neon.tech](https://console.neon.tech)
+2. Create a project → copy the connection string
+3. Paste into `.env` as `DATABASE_URL`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | Description |
+|--------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:migrate` | Run migrations |
+| `npm run db:seed` | Seed sample data |
+| `npm run db:push` | Push schema (no migrations) |
 
-To learn more about Next.js, take a look at the following resources:
+## Environment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See `.env.example` for all variables. Key ones:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `DATABASE_URL` — PostgreSQL connection string (use `postgresql://` for Prisma 7 with pg adapter)
+- `TWILIO_*` — Twilio WhatsApp credentials
+- `TWILIO_MOCK_MODE=true` — Skip real Twilio in dev
+- `S3_*` — For production file storage (R2/S3)
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for Vercel, Postgres, Twilio, and cron setup.
