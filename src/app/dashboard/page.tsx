@@ -83,12 +83,12 @@ function DashboardContent() {
   const prevMonth = () => setViewDate((d) => subMonths(d, 1));
   const nextMonth = () => setViewDate((d) => addMonths(d, 1));
 
-  const resend = async (postId: string) => {
+  const sendNow = async (postId: string) => {
     const res = await fetch(`/api/posts/${postId}/resend`, { method: "POST" });
     if (res.ok) {
       setPosts((prev) =>
         prev.map((p) =>
-          p.id === postId ? { ...p, status: "PENDING_APPROVAL" } : p
+          p.id === postId ? { ...p, status: "CONFIRMED" } : p
         )
       );
     }
@@ -100,7 +100,7 @@ function DashboardContent() {
       const res = await fetch("/api/cron/scheduler");
       const data = await res.json();
       if (res.ok) {
-        if (data.processed > 0) {
+        if (data.processed > 0 && data.successCount > 0) {
           const params = new URLSearchParams({ month: monthStr });
           if (statusFilter !== "all") params.set("status", statusFilter);
           if (clientFilter !== "all") params.set("clientId", clientFilter);
@@ -129,9 +129,7 @@ function DashboardContent() {
   const STATUS_COLORS: Record<string, string> = {
     DRAFT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     SCHEDULED: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    PENDING_APPROVAL: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
     CONFIRMED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    CHANGES_REQUESTED: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
     SKIPPED: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   };
 
@@ -174,10 +172,8 @@ function DashboardContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="PENDING_APPROVAL">Pending approval</SelectItem>
-                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                  <SelectItem value="CHANGES_REQUESTED">Changes requested</SelectItem>
                   <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="CONFIRMED">Sent</SelectItem>
                   <SelectItem value="DRAFT">Draft</SelectItem>
                 </SelectContent>
               </Select>
@@ -294,12 +290,10 @@ function DashboardContent() {
                             Edit post
                           </Link>
                         </DropdownMenuItem>
-                        {(post.status === "SCHEDULED" ||
-                          post.status === "CHANGES_REQUESTED" ||
-                          post.status === "SKIPPED") && (
-                          <DropdownMenuItem onClick={() => resend(post.id)}>
+                        {post.status === "SCHEDULED" && (
+                          <DropdownMenuItem onClick={() => sendNow(post.id)}>
                             <RefreshCw className="mr-2 h-4 w-4" />
-                            Send approval now
+                            Send now
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>

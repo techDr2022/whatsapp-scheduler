@@ -45,11 +45,7 @@ export async function GET(request: Request) {
     }
 
     const mediaUrl = post.assetId ? await getAssetUrl(post.assetId) : undefined;
-
-    // Use approved template with quick reply buttons: Confirm / Need changes / Skip tomorrow
-    // For simplicity we send a regular message; in production use contentSid with approved template
-    const caption = post.caption ?? "Please review this post.";
-    const body = `${caption}\n\nReply: Confirm / Need changes / Skip tomorrow`;
+    const body = post.caption ?? "";
 
     try {
       const { sid, success } = await sendWhatsAppMessage({
@@ -61,7 +57,7 @@ export async function GET(request: Request) {
       if (success) {
         await prisma.scheduledPost.update({
           where: { id: post.id },
-          data: { status: "PENDING_APPROVAL", sentAt: now },
+          data: { status: "CONFIRMED", sentAt: now, confirmedAt: now },
         });
         if (sid) {
           await prisma.messageLog.create({

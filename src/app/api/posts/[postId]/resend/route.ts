@@ -26,7 +26,8 @@ export async function POST(
   }
 
   const mediaUrl = post.assetId ? await getAssetUrl(post.assetId) : undefined;
-  const body = post.caption ?? "Please review this post.\n\nReply: Confirm / Need changes / Skip tomorrow";
+  const body = post.caption ?? "";
+  const now = new Date();
 
   try {
     const { sid, success } = await sendWhatsAppMessage({
@@ -38,7 +39,7 @@ export async function POST(
     if (success) {
       await prisma.scheduledPost.update({
         where: { id: postId },
-        data: { status: "PENDING_APPROVAL", sentAt: new Date() },
+        data: { status: "CONFIRMED", sentAt: now, confirmedAt: now },
       });
       if (sid) {
         await prisma.messageLog.create({

@@ -41,7 +41,7 @@ export function PostEditorDrawer({
   onSaved,
 }: PostEditorDrawerProps) {
   const [caption, setCaption] = useState(post?.caption ?? "");
-  const [approvalTime, setApprovalTime] = useState(
+  const [sendTime, setSendTime] = useState(
     post?.approvalSendAt
       ? format(new Date(post.approvalSendAt), "HH:mm")
       : "09:00"
@@ -85,7 +85,7 @@ export function PostEditorDrawer({
     if (!post) return;
     setSaving(true);
     try {
-      const [h, m] = approvalTime.split(":").map(Number);
+      const [h, m] = sendTime.split(":").map(Number);
       const approvalSendAt = new Date(postDate);
       approvalSendAt.setHours(h, m, 0, 0);
 
@@ -113,7 +113,7 @@ export function PostEditorDrawer({
     if (!post) return;
     setSaving(true);
     try {
-      const [h, m] = approvalTime.split(":").map(Number);
+      const [h, m] = sendTime.split(":").map(Number);
       const approvalSendAt = new Date(postDate);
       approvalSendAt.setHours(h, m, 0, 0);
 
@@ -137,7 +137,7 @@ export function PostEditorDrawer({
     }
   };
 
-  const sendNow = async () => {
+  const sendPostNow = async () => {
     if (!post) return;
     setSaving(true);
     try {
@@ -217,12 +217,12 @@ export function PostEditorDrawer({
           </div>
 
           <div>
-            <Label htmlFor="approvalTime">Approval send time</Label>
+            <Label htmlFor="sendTime">Send time</Label>
             <Input
-              id="approvalTime"
+              id="sendTime"
               type="time"
-              value={approvalTime}
-              onChange={(e) => setApprovalTime(e.target.value)}
+              value={sendTime}
+              onChange={(e) => setSendTime(e.target.value)}
               className="mt-2"
             />
           </div>
@@ -250,11 +250,11 @@ export function PostEditorDrawer({
             </Button>
             <Button
               variant="secondary"
-              onClick={sendNow}
+              onClick={sendPostNow}
               disabled={saving}
             >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Send approval now
+              Send now
             </Button>
           </div>
         </div>
