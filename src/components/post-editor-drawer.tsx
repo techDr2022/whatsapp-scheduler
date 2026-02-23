@@ -61,21 +61,71 @@ export function PostEditorDrawer({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("clientId", clientId);
+      const isProd = typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      if (isProd) {
+        // Production: direct upload to R2 via presigned URL (bypasses 4.5MB Vercel limit)
+        const urlRes = await fetch("/api/upload/url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            mimeType: file.type || "image/jpeg",
+            clientId,
+          }),
+        });
+        if (!urlRes.ok) {
+          const err = await urlRes.json();
+          throw new Error(err.error || "Failed to get upload URL");
+        }
+        const { uploadUrl, key } = await urlRes.json();
 
-      if (!res.ok) throw new Error("Upload failed");
-      const { asset, url } = await res.json();
-      setAssetId(asset.id);
-      setAssetUrl(url);
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type || "image/jpeg" },
+        });
+        if (!putRes.ok) throw new Error("Failed to upload to storage");
+
+        const completeRes = await fetch("/api/upload/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key,
+            mimeType: file.type || "image/jpeg",
+            sizeBytes: file.size,
+            clientId,
+          }),
+        });
+        if (!completeRes.ok) {
+          const err = await completeRes.json();
+          throw new Error(err.error || "Failed to register upload");
+        }
+        const { asset, url } = await completeRes.json();
+        setAssetId(asset.id);
+        setAssetUrl(url);
+      } else {
+        // Development: upload through API
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("clientId", clientId);
+
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Upload failed");
+        }
+        const { asset, url } = await res.json();
+        setAssetId(asset.id);
+        setAssetUrl(url);
+      }
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }

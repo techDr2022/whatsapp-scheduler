@@ -32,9 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ asset, url });
   } catch (e) {
     console.error("Upload error:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Upload failed" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

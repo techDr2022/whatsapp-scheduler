@@ -68,7 +68,11 @@ npm run db:seed   # Optional: seed one client with a full month
 ### Cloudflare R2
 
 1. Create an R2 bucket.
-2. Set env vars:
+2. **Enable CORS** for direct uploads: R2 bucket → Settings → CORS policy. Add:
+   ```json
+   [{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedHeaders":["*"]}]
+   ```
+3. Set env vars:
    - `S3_ENDPOINT`: R2 endpoint URL
    - `S3_REGION`: `auto`
    - `S3_ACCESS_KEY`, `S3_SECRET_KEY`: R2 API tokens
