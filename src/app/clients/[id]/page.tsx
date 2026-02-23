@@ -174,7 +174,7 @@ export default function ClientDetailPage() {
                       setNewContact((p) => ({ ...p, isPrimaryApproval: e.target.checked }))
                     }
                   />
-                  <Label htmlFor="primary">Primary approval contact</Label>
+                  <Label htmlFor="primary">Primary contact (receives WhatsApp)</Label>
                 </div>
                 <Button type="submit">Add</Button>
               </form>
