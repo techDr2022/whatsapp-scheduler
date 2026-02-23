@@ -70,8 +70,17 @@ npm run db:seed   # Optional: seed one client with a full month
 1. Create an R2 bucket.
 2. **Enable CORS** for direct uploads: R2 bucket → Settings → CORS policy. Add:
    ```json
-   [{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedHeaders":["*"]}]
+   [
+     {
+       "AllowedOrigins": ["*"],
+       "AllowedMethods": ["GET", "PUT", "HEAD"],
+       "AllowedHeaders": ["*"],
+       "ExposeHeaders": ["ETag"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
    ```
+   Or for your domain only: `"AllowedOrigins": ["https://your-app.vercel.app"]`
 3. Set env vars:
    - `S3_ENDPOINT`: R2 endpoint URL
    - `S3_REGION`: `auto`
