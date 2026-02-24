@@ -61,6 +61,13 @@ npm run db:seed   # Optional: seed one client with a full month
    - **Inbound**: `https://your-domain.com/api/twilio/inbound`
 4. Create an approved template with quick reply buttons (Confirm / Need changes / Skip tomorrow) if using template messages.
 
+### Messages not arriving (including text-only)
+
+- **WhatsApp Sandbox**: If you use the Twilio **Sandbox**, the recipient must **opt in** first. From their WhatsApp, they must send the exact join message (e.g. `join <your-code>`) to your sandbox number. Until they do, Twilio accepts the message but WhatsApp will not deliver it. In Twilio Console → Messaging → Logs, failed messages may show error **63016** (user not opted in).
+- **Phone number**: The contact’s phone must be in **E.164** format (e.g. `+919876543210` for India). No leading zero.
+- **Status callback**: Set `NEXT_PUBLIC_APP_URL` (or deploy on Vercel so `VERCEL_URL` is set) so the app can register a status callback with Twilio; then check Twilio logs or your `/api/twilio/status` for delivery/failure updates.
+- **Text-only**: The app sends a minimal placeholder if the caption is empty so the message is valid. If you see “Message created” in logs but nothing on WhatsApp, the cause is usually sandbox opt-in or WhatsApp Business policy (e.g. 24-hour session window).
+
 ---
 
 ## 4. Storage (S3/R2 for Production)

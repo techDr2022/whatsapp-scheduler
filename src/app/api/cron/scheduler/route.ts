@@ -45,12 +45,18 @@ export async function GET(request: Request) {
     }
 
     const mediaUrl = post.assetId ? getAssetUrlForWhatsApp(post.assetId) : undefined;
-    const body = post.caption ?? "";
+    const body = (post.caption && post.caption.trim()) ? post.caption.trim() : "";
 
     try {
-      const { sid, success } = await sendWhatsAppMessage({
+      console.log("[Scheduler] Sending post", {
+        postId: post.id,
         to: primaryContact.phone,
-        body,
+        bodyLen: body.length,
+        hasMedia: !!mediaUrl,
+      });
+      const { sid, success } =       await sendWhatsAppMessage({
+        to: primaryContact.phone,
+        body: body || " ", // never send empty string; twilio lib uses placeholder if needed
         mediaUrl: mediaUrl ?? undefined,
       });
 

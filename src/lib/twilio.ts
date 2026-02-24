@@ -38,15 +38,28 @@ export async function sendWhatsAppMessage(params: {
 
   const to = params.to.startsWith("whatsapp:") ? params.to : `whatsapp:${params.to}`;
 
-  const messageParams = {
+  // WhatsApp may not deliver empty body when there's no media; use a minimal placeholder
+  const body = (params.body && params.body.trim()) ? params.body.trim() : "\u200b"; // zero-width space if truly empty
+
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_APP_URL;
+  const messageParams: Record<string, unknown> = {
     from: whatsappFrom,
     to,
-    body: params.body,
+    body,
     ...(params.mediaUrl && { mediaUrl: [params.mediaUrl] }),
+    ...(baseUrl && { statusCallback: `${baseUrl}/api/twilio/status` }),
   };
 
-  const message = await twilioClient.messages.create(messageParams);
-  return { sid: message.sid, success: true };
+  try {
+    const message = await twilioClient.messages.create(messageParams as never);
+    console.log("[Twilio] Message created:", { sid: message.sid, to, status: message.status });
+    return { sid: message.sid, success: true };
+  } catch (err) {
+    console.error("[Twilio] Send failed:", { to, error: err });
+    throw err;
+  }
 }
 
 export async function sendWhatsAppTemplate(params: {
