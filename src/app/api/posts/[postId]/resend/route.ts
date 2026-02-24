@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendWhatsAppMessage } from "@/lib/twilio";
-import { getAssetUrl } from "@/lib/storage";
+import { getAssetUrlForWhatsApp } from "@/lib/storage";
 
 export async function POST(
   _request: Request,
@@ -25,7 +25,7 @@ export async function POST(
     return NextResponse.json({ error: "No contact" }, { status: 400 });
   }
 
-  const mediaUrl = post.assetId ? await getAssetUrl(post.assetId) : undefined;
+  const mediaUrl = post.assetId ? getAssetUrlForWhatsApp(post.assetId) : undefined;
   const body = post.caption ?? "";
   const now = new Date();
 

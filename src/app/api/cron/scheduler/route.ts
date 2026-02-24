@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendWhatsAppMessage } from "@/lib/twilio";
-import { getAssetUrl } from "@/lib/storage";
+import { getAssetUrlForWhatsApp } from "@/lib/storage";
 
 // Vercel cron: add to vercel.json "crons": [{"path": "/api/cron/scheduler", "schedule": "*/15 * * * *"}]
 // Or call manually for testing
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const mediaUrl = post.assetId ? await getAssetUrl(post.assetId) : undefined;
+    const mediaUrl = post.assetId ? getAssetUrlForWhatsApp(post.assetId) : undefined;
     const body = post.caption ?? "";
 
     try {

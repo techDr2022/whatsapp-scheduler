@@ -253,11 +253,11 @@ function DashboardContent() {
           {posts.map((post) => (
             <Card key={post.id} className="overflow-hidden transition-shadow hover:shadow-md">
               <div className="flex">
-                {post.asset?.url ? (
+                {post.asset?.id ? (
                   <div className="h-28 w-28 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={post.asset.url}
+                      src={`/api/asset/${post.asset.id}`}
                       alt="Post"
                       className="h-full w-full object-cover"
                     />

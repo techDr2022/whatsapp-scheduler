@@ -189,10 +189,10 @@ function PlannerContent() {
                   </span>
                   {post && (
                     <div className="mt-2 space-y-1">
-                      {post.asset?.url && (
+                      {post.asset?.id && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={post.asset.url}
+                          src={`/api/asset/${post.asset.id}`}
                           alt="Post thumbnail"
                           className="h-12 w-full rounded object-cover"
                         />

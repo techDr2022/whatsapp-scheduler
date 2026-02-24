@@ -55,89 +55,33 @@ export function PostEditorDrawer({
 
   const postDate = post ? new Date(post.postDate) : new Date();
 
-  const uploadViaApi = async (file: File): Promise<{ asset: { id: string }; url: string }> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("clientId", clientId);
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Upload failed");
-    }
-    return res.json();
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Please use an image under 4MB.");
+      return;
+    }
+
     setUploading(true);
     try {
-      const isProd = typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("clientId", clientId);
 
-      if (isProd) {
-        // Production: try direct upload first, fallback to API
-        try {
-          const urlRes = await fetch("/api/upload/url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: file.name,
-              mimeType: file.type || "image/jpeg",
-              clientId,
-            }),
-          });
-          if (!urlRes.ok) {
-            const err = await urlRes.json();
-            throw new Error(err.error || "Failed to get upload URL");
-          }
-          const { uploadUrl, key } = await urlRes.json();
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-          const putRes = await fetch(uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type || "image/jpeg" },
-          });
-          if (!putRes.ok) throw new Error("Failed to upload to storage");
-
-          const completeRes = await fetch("/api/upload/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              key,
-              mimeType: file.type || "image/jpeg",
-              sizeBytes: file.size,
-              clientId,
-            }),
-          });
-          if (!completeRes.ok) {
-            const err = await completeRes.json();
-            throw new Error(err.error || "Failed to register upload");
-          }
-          const { asset, url } = await completeRes.json();
-          setAssetId(asset.id);
-          setAssetUrl(url);
-        } catch {
-          // Fallback: upload via API (works for files under ~4MB)
-          if (file.size > 4 * 1024 * 1024) {
-            throw new Error(
-              "Direct upload failed (check R2 CORS). For large files, use an image under 4MB."
-            );
-          }
-          const { asset, url } = await uploadViaApi(file);
-          setAssetId(asset.id);
-          setAssetUrl(url);
-        }
-      } else {
-        const { asset, url } = await uploadViaApi(file);
-        setAssetId(asset.id);
-        setAssetUrl(url);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed");
       }
+      const { asset, url } = await res.json();
+      setAssetId(asset.id);
+      setAssetUrl(url);
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Upload failed");
@@ -235,10 +179,10 @@ export function PostEditorDrawer({
           <div>
             <Label>Poster / Media</Label>
             <div className="mt-2 flex gap-4">
-              {assetUrl && (
+              {(assetId || assetUrl) && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={assetUrl}
+                  src={assetId ? `/api/asset/${assetId}` : assetUrl ?? ""}
                   alt="Poster preview"
                   className="h-24 w-24 rounded object-cover"
                 />

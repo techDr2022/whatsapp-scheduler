@@ -67,8 +67,13 @@ npm run db:seed   # Optional: seed one client with a full month
 
 ### Cloudflare R2
 
-1. Create an R2 bucket.
-2. **Enable CORS** for direct uploads: R2 bucket → Settings → CORS policy. Add:
+1. Create an R2 bucket and note its name.
+2. **Create an R2 API token** (fixes "Access Denied" on uploads):
+   - In Cloudflare dashboard: **R2** → **Manage R2 API Tokens** → **Create API token**.
+   - Name it (e.g. `whatsapp-planner-upload`).
+   - Under **Permissions**, choose **Object Read & Write** (for this bucket or all buckets).
+   - Create token and copy the **Access Key ID** and **Secret Access Key** (shown once).
+3. **Enable CORS** (if using direct browser uploads): R2 bucket → Settings → CORS policy. Add:
    ```json
    [
      {
@@ -81,12 +86,18 @@ npm run db:seed   # Optional: seed one client with a full month
    ]
    ```
    Or for your domain only: `"AllowedOrigins": ["https://your-app.vercel.app"]`
-3. Set env vars:
-   - `S3_ENDPOINT`: R2 endpoint URL
+4. Set env vars in Vercel (and locally for prod-like testing):
+   - `S3_ENDPOINT`: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` (find Account ID in R2 overview).
    - `S3_REGION`: `auto`
-   - `S3_ACCESS_KEY`, `S3_SECRET_KEY`: R2 API tokens
-   - `S3_BUCKET`: bucket name
-   - `STORAGE_PUBLIC_URL`: public URL for the bucket (if using public access)
+   - `S3_ACCESS_KEY`: R2 API token **Access Key ID**
+   - `S3_SECRET_KEY`: R2 API token **Secret Access Key**
+   - `S3_BUCKET`: your bucket name (e.g. `whatsapp-scheduler`)
+   - `STORAGE_PUBLIC_URL`: public URL for the bucket (if you enabled public access)
+
+   **Example (path-style S3 API):**  
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com/<BUCKET>`  
+   e.g. `https://170e838666269c2a48d041e79c928cc8.r2.cloudflarestorage.com/whatsapp-scheduler`  
+   → set `S3_ENDPOINT=https://170e838666269c2a48d041e79c928cc8.r2.cloudflarestorage.com` and `S3_BUCKET=whatsapp-scheduler`.
 
 ### AWS S3
 

@@ -23,6 +23,17 @@ export async function POST(request: Request) {
 
     let url: string;
     if (isProd) {
+      const missing: string[] = [];
+      if (!process.env.S3_ENDPOINT) missing.push("S3_ENDPOINT");
+      if (!process.env.S3_ACCESS_KEY) missing.push("S3_ACCESS_KEY");
+      if (!process.env.S3_SECRET_KEY) missing.push("S3_SECRET_KEY");
+      if (!process.env.S3_BUCKET) missing.push("S3_BUCKET");
+      if (missing.length) {
+        return NextResponse.json(
+          { error: `R2 not configured. Set in Vercel: ${missing.join(", ")}. See DEPLOYMENT.md for R2 token setup.` },
+          { status: 500 }
+        );
+      }
       url = await saveUploadS3(key, buffer, mimeType);
     } else {
       url = await saveUploadLocal(key, buffer, mimeType);
