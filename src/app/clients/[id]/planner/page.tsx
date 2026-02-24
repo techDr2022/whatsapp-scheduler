@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PostEditorDrawer } from "@/components/post-editor-drawer";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import {
   startOfMonth,
   endOfMonth,
@@ -87,36 +87,50 @@ function PlannerContent() {
   const startPad = start.getDay();
   const paddedDays = [...Array(startPad).fill(null), ...days];
 
-  const getPostForDay = (day: Date) =>
-    posts.find((p) => isSameDay(parseISO(p.postDate), day));
+  const getPostsForDay = (day: Date) =>
+    posts.filter((p) => isSameDay(parseISO(p.postDate), day));
 
   const openEditor = (post: Post) => {
     setSelectedPost(post);
     setDrawerOpen(true);
   };
 
-  const createOrEditDay = (day: Date) => {
-    const existing = getPostForDay(day);
-    if (existing) {
-      openEditor(existing);
-    } else {
-      // Create new post and open editor
-      fetch(`/api/clients/${clientId}/posts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postDate: format(day, "yyyy-MM-dd"),
-          status: "DRAFT",
-          offsetDays: 0,
-        }),
-      })
-        .then((r) => r.json())
-        .then((post) => {
-          setPosts((prev) => [...prev, post].sort((a, b) => a.postDate.localeCompare(b.postDate)));
-          setSelectedPost(post);
-          setDrawerOpen(true);
-        });
-    }
+  const createPostForDay = (day: Date) => {
+    fetch(`/api/clients/${clientId}/posts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        postDate: format(day, "yyyy-MM-dd"),
+        status: "DRAFT",
+        offsetDays: 0,
+      }),
+    })
+      .then((r) => r.json())
+      .then((post) => {
+        setPosts((prev) => [...prev, post].sort((a, b) => a.postDate.localeCompare(b.postDate)));
+        setSelectedPost(post);
+        setDrawerOpen(true);
+      });
+  };
+
+  const deletePost = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
+    if (!confirm("Delete this post?")) return;
+    fetch(`/api/clients/${clientId}/posts/${postId}`, { method: "DELETE" }).then((r) => {
+      if (r.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        if (selectedPost?.id === postId) {
+          setSelectedPost(null);
+          setDrawerOpen(false);
+        }
+      }
+    });
+  };
+
+  const refreshPosts = () => {
+    fetch(`/api/clients/${clientId}/posts?month=${monthStr}`)
+      .then((r) => r.json())
+      .then(setPosts);
   };
 
   return (
@@ -131,7 +145,7 @@ function PlannerContent() {
           <div>
             <h1 className="text-2xl font-bold">{clientName}</h1>
             <p className="text-sm text-muted-foreground">
-              Click a day to schedule or edit a post
+              Click a day to add a post, click a post to edit, use ⋮ to delete
             </p>
           </div>
         </div>
@@ -165,46 +179,76 @@ function PlannerContent() {
           <div className="grid grid-cols-7">
             {paddedDays.map((day, i) => {
               if (!day) {
-                return <div key={`pad-${i}`} className="min-h-[100px] border p-2" />;
+                return <div key={`pad-${i}`} className="min-h-[120px] border p-2" />;
               }
-              const post = getPostForDay(day);
+              const dayPosts = getPostsForDay(day);
               const isCurrentMonth = isSameMonth(day, viewDate);
 
               return (
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "min-h-[100px] cursor-pointer border p-2 transition-colors hover:bg-muted/50",
+                    "min-h-[120px] border p-2 transition-colors",
                     !isCurrentMonth && "bg-muted/30"
                   )}
-                  onClick={() => createOrEditDay(day)}
                 >
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      !isCurrentMonth && "text-muted-foreground"
-                    )}
-                  >
-                    {format(day, "d")}
-                  </span>
-                  {post && (
-                    <div className="mt-2 space-y-1">
-                      {post.asset?.id && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/api/asset/${post.asset.id}`}
-                          alt="Post thumbnail"
-                          className="h-12 w-full rounded object-cover"
-                        />
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={cn(
+                        "text-sm font-medium",
+                        !isCurrentMonth && "text-muted-foreground"
                       )}
-                      <Badge
-                        variant="secondary"
-                        className={cn("text-xs", STATUS_COLORS[post.status] ?? "")}
+                    >
+                      {format(day, "d")}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        createPostForDay(day);
+                      }}
+                      title="Add post"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="mt-1.5 space-y-1.5">
+                    {dayPosts.map((post) => (
+                      <div
+                        key={post.id}
+                        className="group flex cursor-pointer items-start gap-1 rounded border bg-background p-1.5 transition-colors hover:bg-muted/50"
+                        onClick={() => openEditor(post)}
                       >
-                        {post.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                  )}
+                        <div className="min-w-0 flex-1">
+                          {post.asset?.id && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/api/asset/${post.asset.id}`}
+                              alt=""
+                              className="h-10 w-full rounded object-cover"
+                            />
+                          )}
+                          <Badge
+                            variant="secondary"
+                            className={cn("mt-0.5 text-xs", STATUS_COLORS[post.status] ?? "")}
+                          >
+                            {post.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 opacity-70 hover:opacity-100 hover:text-destructive"
+                          onClick={(e) => deletePost(e, post.id)}
+                          title="Delete post"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -217,11 +261,8 @@ function PlannerContent() {
         clientId={clientId}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        onSaved={() => {
-          fetch(`/api/clients/${clientId}/posts?month=${monthStr}`)
-            .then((r) => r.json())
-            .then(setPosts);
-        }}
+        onSaved={refreshPosts}
+        onDeleted={refreshPosts}
       />
     </div>
   );

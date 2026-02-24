@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Loader2, Upload, Send } from "lucide-react";
+import { Loader2, Upload, Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 type Post = {
@@ -31,6 +31,7 @@ type PostEditorDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 };
 
 export function PostEditorDrawer({
@@ -39,6 +40,7 @@ export function PostEditorDrawer({
   open,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: PostEditorDrawerProps) {
   const [caption, setCaption] = useState(post?.caption ?? "");
   const [sendTime, setSendTime] = useState(
@@ -165,6 +167,23 @@ export function PostEditorDrawer({
     }
   };
 
+  const deletePost = async () => {
+    if (!post || !confirm("Delete this post? This cannot be undone.")) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/posts/${post.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onDeleted?.();
+        onSaved();
+        onOpenChange(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!post) return null;
 
   return (
@@ -264,6 +283,15 @@ export function PostEditorDrawer({
             >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Send now
+            </Button>
+            <Button
+              variant="ghost"
+              className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={deletePost}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete
             </Button>
           </div>
         </div>

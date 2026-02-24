@@ -49,3 +49,16 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+  const { id, postId } = await params;
+  const existing = await prisma.scheduledPost.findFirst({
+    where: { id: postId, clientId: id },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await prisma.scheduledPost.delete({ where: { id: postId } });
+  return new Response(null, { status: 204 });
+}
