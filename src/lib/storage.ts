@@ -44,10 +44,11 @@ export async function getUploadUrl(
 
   if (isProd) {
     const client = getS3Client();
+    // Do NOT include ContentType in the command - browser may send different headers
+    // and R2/S3 will reject with Access Denied if signature doesn't match
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
-      ContentType: mimeType,
     });
     const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
     const publicUrl = process.env.STORAGE_PUBLIC_URL
