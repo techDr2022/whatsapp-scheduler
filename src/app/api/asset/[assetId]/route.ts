@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Readable } from "stream";
 import { getAssetStream } from "@/lib/storage";
 
 export async function GET(
@@ -23,8 +22,24 @@ export async function GET(
     return NextResponse.redirect(url);
   }
 
-  // Convert Node stream to Web ReadableStream for Response
-  const webStream = Readable.toWeb(result.body) as ReadableStream;
+  const nodeStream = result.body;
+  const webStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      nodeStream.on("data", (chunk: Buffer) => {
+        controller.enqueue(chunk);
+      });
+      nodeStream.on("end", () => {
+        controller.close();
+      });
+      nodeStream.on("error", (error) => {
+        controller.error(error);
+      });
+    },
+    cancel() {
+      // No explicit cleanup needed here; stream will be GC'd.
+    },
+  });
+
   return new NextResponse(webStream, {
     headers: {
       "Content-Type": result.contentType,
