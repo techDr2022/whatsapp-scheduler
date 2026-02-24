@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Trash2 } from "lucide-react";
 
 type Client = {
   id: string;
@@ -27,6 +27,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -47,6 +48,16 @@ export default function ClientsPage() {
       setClients((prev) => [...prev, client]);
       setNewName("");
       setOpen(false);
+    }
+  };
+
+  const deleteClient = async (clientId: string, clientName: string) => {
+    if (!confirm(`Delete client "${clientName}"? This will remove all their contacts and scheduled posts.`)) return;
+    setDeletingId(clientId);
+    const res = await fetch(`/api/clients/${clientId}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (res.ok) {
+      setClients((prev) => prev.filter((c) => c.id !== clientId));
     }
   };
 
@@ -97,7 +108,7 @@ export default function ClientsPage() {
                     ? `Primary: ${client.contacts.find((c) => c.isPrimaryApproval)?.name}`
                     : "No primary contact"}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/clients/${client.id}`}>Edit</Link>
                   </Button>
@@ -106,6 +117,16 @@ export default function ClientsPage() {
                       <Calendar className="mr-1 h-3 w-3" />
                       Planner
                     </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => deleteClient(client.id, client.name)}
+                    disabled={deletingId === client.id}
+                    title="Delete client"
+                  >
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </CardContent>
